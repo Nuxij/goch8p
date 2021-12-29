@@ -1,6 +1,7 @@
 package machine
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"time"
@@ -37,11 +38,11 @@ var HexSprites = [16]HexSprite{
 }
 
 type Ch8p struct {
-	RAM      Memory
 	V        Registers
 	Counters Counters
 	Stack    Stack
 	GFX      Memory
+	RAM      Memory
 	Keyboard Memory
 	Delay    *time.Ticker
 	Sound    *time.Ticker
@@ -95,9 +96,10 @@ func (c *Ch8p) DrawSprite(x, y uint16, height uint16) {
 
 func (c *Ch8p) Tick() {
 	pc := c.ReadCounter('P')
-	smallestByte := c.RAM.ReadByte(pc)
-	largestByte := c.RAM.ReadByte(pc + 1)
-	opcode := uint16(largestByte)<<8 | uint16(smallestByte)
+	// smallestByte := c.RAM.ReadByte(pc)
+	// largestByte := c.RAM.ReadByte(pc + 1)
+	opcode := binary.LittleEndian.Uint16(c.RAM[pc:])
+	// uint16(largestByte)<<8 | uint16(smallestByte)
 	instruction := (opcode & 0xF000)
 	c.drawFlag = false
 
