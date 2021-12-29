@@ -11,6 +11,9 @@ func (m Memory) ReadByte(addr uint16) byte {
 func (m Memory) ReadWord(addr uint16) uint16 {
 	return (uint16(m[addr]) << 8) | uint16(m[addr+1])
 }
+func (m Memory) ReadBytes(addr uint16, length uint16) []byte {
+	return m[addr : addr+length]
+}
 func (m Memory) WriteByte(addr uint16, value byte) {
 	m[addr] = value
 }

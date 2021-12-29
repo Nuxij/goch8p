@@ -1,6 +1,7 @@
 package gfx
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/Nuxij/goch8p/machine"
@@ -20,18 +21,20 @@ var (
 		BottomRight: "*",
 	}
 	StyleDefault = lipgloss.NewStyle().BorderStyle(BorderCute).BorderForeground(lipgloss.Color("63"))
-	StyleMapData = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFF")).Background(lipgloss.Color("#000"))
+	StyleMapData = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFF"))
 )
 
 type Firmware struct {
 	tea.Model
-	width, height int
+	width, height uint16
+	ready 	   bool
 	ram           machine.Memory
 	Machine       machine.Ch8pInfo
 }
 
-func NewFirmware(width, height int) *Firmware {
+func NewFirmware(width, height uint16) *Firmware {
 	cuppa := &Firmware{
+		ready:	false,
 		width:  width,
 		height: height,
 		ram:    make(machine.Memory, width*height),
@@ -40,63 +43,71 @@ func NewFirmware(width, height int) *Firmware {
 }
 
 func (fw *Firmware) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
+	for i := uint16(0); i < fw.width*fw.height; i++ {
+		fw.ram.WriteByte(i, 0x0E)
+	}
 	return nil
 }
 
 func (fw *Firmware) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var (
+		// cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+
 	switch msg := msg.(type) {
 
-	// Is it a key press?
-	case PixelMsg:
-		fw.Machine = msg.Info
-		for i, b := range msg.Pixels {
-			fw.ram.WriteByte(uint16(i), b)
-		}
-		return fw, nil
-	case tea.KeyMsg:
-
-		// Cool, what was the actual key pressed?
-		switch msg.String() {
-
-		// These keys should exit the program.
-		case "ctrl+c", "q":
-			return fw, tea.Quit
-
-		}
+		case tea.KeyMsg:
+			if k := msg.String(); k == "ctrl+c" || k == "q" || k == "esc" {
+				return fw, tea.Quit
+			}
+		// Is it a key press?
+		case PixelMsg:
+			fw.Machine = msg.Info
+			
+			for i, b := range msg.Pixels {
+				fw.ram.WriteByte(uint16(i), b)
+			}
+		case tea.MouseMsg:
+			// left click
+			if msg.Type == tea.MouseLeft {
+				fw.ram.WriteByte(uint16(msg.X)+uint16(msg.Y)*fw.width, 0xFF)
+			}
+		case tea.WindowSizeMsg:
+			fw.ready = true
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
-	return fw, nil
+	return fw, tea.Batch(cmds...)
 }
 
 func (fw *Firmware) View() string {
-	// The header
-	header := "JoeDraw\n"
+	if !fw.ready {
+		return "\n  Initializing..."
+	}
 
-	// Iterate over our choices
-	mapData := header
-	for i, bite := range fw.ram {
-		// Render the row
-		if bite != 0 {
-			// num := fmt.Sprintf("%d", rand.Intn(i%fw.width+1))
-			mapData += StyleMapData.Render(".")
-			if i%fw.width == fw.width-1 {
-				mapData += "\n"
-			}
+	// header := strings.Repeat("H", int(fw.width)) + "\n"
+	content := ""
+	for i, b := range fw.ram.ReadBytes(0, fw.width*fw.height) {
+		if b == 0 {
+			content += " "
+		} else {
+			c := "X"
+			// content is a lipgloss style with foreground based on position
+			content += fmt.Sprintf("%v", lipgloss.NewStyle().Foreground(lipgloss.Color(hex.EncodeToString([]byte{b}))).Render(c))
+		}
+		if uint16(i+1) % fw.width == 0 {
+			content += "\n"
 		}
 	}
-	mapData = StyleMapData.Render(mapData)
+	mapString := lipgloss.NewStyle().
+		Width(int(fw.width)).Height(int(fw.height)).
+		Render(content)
 
-	// The footer
-	footer := "(Press q to quit)\n"
 
-	vmInfo := StyleMapData.Copy()
-	info := "VM Info - " + lipgloss.PlaceHorizontal(fw.width, lipgloss.Center, footer)
-	info += fmt.Sprintf("Opcode: %v\n", fw.Machine.Opcode)
-	info += fmt.Sprintf("Tick: %d\n", fw.Machine.Tick)
 
-	frames := lipgloss.JoinHorizontal(lipgloss.Top, StyleDefault.Render(mapData), vmInfo.Render(info))
-	return lipgloss.JoinVertical(lipgloss.Top, frames, StyleDefault.Render(footer))
+// Join on the top edge
+// str := lipgloss.JoinHorizontal(lipgloss.Top, blockA, blockB)
+return mapString
+	
 }
+

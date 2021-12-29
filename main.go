@@ -20,7 +20,7 @@ type Runner struct {
 	Display *gfx.Display
 }
 
-func NewRunner(width, height int) *Runner {
+func NewRunner(width, height uint16) *Runner {
 	r := &Runner{
 		VM: &machine.Ch8p{
 			RAM: make(machine.Memory, RAM_SIZE),
@@ -42,8 +42,10 @@ func NewRunner(width, height int) *Runner {
 		Display: gfx.NewDisplay(width, height),
 	}
 	// initial program is a single draw call, 5 high sprite at 0,0
-	r.VM.Write(r.VM.ReadCounter('P'), 0xD0)
-	r.VM.Write(r.VM.ReadCounter('P')+1, 0x05)
+	for i := uint16(0); i < 5; i++ {
+		r.VM.Write(r.VM.ReadCounter('P')*i, 0xD0)
+		r.VM.Write(r.VM.ReadCounter('P')*i+1, 0x05)
+	}
 	r.VM.WriteCounter('I', 0)
 	return r
 }

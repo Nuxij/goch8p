@@ -116,7 +116,7 @@ func (c *Ch8p) Tick() {
 		c.WriteCounter('P', pc+2)
 		c.LastOp = "0xANNN"
 	default:
-		c.LastOp = fmt.Sprintf("0x%v (%d)", strconv.FormatInt(int64(opcode), 16), strconv.FormatInt(int64(instruction), 10))
+		c.LastOp = fmt.Sprintf("0x%v (%v)", strconv.FormatInt(int64(opcode), 16), strconv.FormatInt(int64(instruction), 10))
 	}
 	c.WriteCounter('T', c.ReadCounter('T')+1)
 

@@ -16,19 +16,24 @@ type PixelMsg struct {
 }
 
 type Display struct {
-	width    int
-	height   int
+	width    , height uint16
 	mug      *Firmware
 	firmware *tea.Program
 }
 
-func NewDisplay(width, height int) *Display {
+func NewDisplay(width, height uint16) *Display {
 	display := &Display{
 		width:  width,
 		height: height,
 		mug:    NewFirmware(width, height),
 	}
-	display.firmware = tea.NewProgram(display.mug)
+	display.firmware = tea.NewProgram(display.mug,
+		// Use the full size of the terminal in its "alternate screen buffer"
+		tea.WithAltScreen(),
+
+		// Also turn on mouse support so we can track the mouse wheel
+		tea.WithMouseAllMotion(),
+	)
 	return display
 }
 
