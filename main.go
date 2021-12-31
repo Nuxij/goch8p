@@ -35,24 +35,24 @@ func NewRunner(width, height uint16) *Runner {
 			Stack:    machine.Stack{0},
 			GFX:      make(machine.Memory, width*height),
 			Keyboard: make(machine.Memory, KEYBOARD_SIZE),
-			Delay:    time.NewTicker(time.Second / 60),
-			Sound:    time.NewTicker(time.Second / 60),
+			Delay:    time.NewTicker(time.Second/60),
+			Sound:    time.NewTicker(time.Second/60),
 			LastOp:   "false",
 		},
 		Display: gfx.NewDisplay(width, height),
 	}
 	// initial program is a single draw call, 5 high sprite at 0,0
-	for i := uint16(0); i < 5; i++ {
-		r.VM.Write(r.VM.ReadCounter('P')*i, 0xD0)
-		r.VM.Write(r.VM.ReadCounter('P')*i+1, 0x05)
+	for i := uint16(0); i < 1; i++ {
+		r.VM.Write(r.VM.ReadCounter('P')+i, 0x45)
+		r.VM.Write(r.VM.ReadCounter('P')+i+1, 0xD4)
 	}
 	r.VM.WriteCounter('I', 0)
 	return r
 }
 
 func main() {
-	runner := NewRunner(64, 64)
-	hurts := time.NewTicker(time.Millisecond * 100)
+	runner := NewRunner(128, 32)
+	hurts := time.NewTicker(time.Second/1)
 	defer hurts.Stop()
 	go func() {
 		for {

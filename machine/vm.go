@@ -3,7 +3,6 @@ package machine
 import (
 	"encoding/binary"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -98,9 +97,12 @@ func (c *Ch8p) Tick() {
 	pc := c.ReadCounter('P')
 	// smallestByte := c.RAM.ReadByte(pc)
 	// largestByte := c.RAM.ReadByte(pc + 1)
-	opcode := binary.LittleEndian.Uint16(c.RAM[pc:])
+	opbytes := c.RAM.ReadBytes(pc, 2)
+	opcode := binary.LittleEndian.Uint16(opbytes)
+	// c.LastOp = fmt.Sprintf("%X", opcode)
 	// uint16(largestByte)<<8 | uint16(smallestByte)
 	instruction := (opcode & 0xF000)
+	lastOp := fmt.Sprintf("\n[%X, %X]", opcode, instruction)
 	c.drawFlag = false
 
 	switch instruction {
@@ -110,13 +112,17 @@ func (c *Ch8p) Tick() {
 		N := opcode & 0x000F // height of sprite
 		c.DrawSprite(uint16(c.ReadRegister(Vx)), uint16(c.ReadRegister(Vy)), N)
 		c.WriteCounter('P', pc+2)
-		c.LastOp = "0xDXYN"
+		c.LastOp = lastOp + " [0xDXYN]"
 	case 0xA000: // ANNN: Sets I to the address NNN.
 		c.WriteCounter('I', opcode&0x0FFF)
 		c.WriteCounter('P', pc+2)
-		c.LastOp = "0xANNN"
+		c.LastOp = lastOp + " 0xANNN"
 	default:
-		c.LastOp = fmt.Sprintf("0x%v (%v)", strconv.FormatInt(int64(opcode), 16), strconv.FormatInt(int64(instruction), 10))
+		if c.ReadCounter('T') % 10 == 0 {
+			c.LastOp = lastOp
+		} else {
+			c.LastOp = lastOp + c.LastOp 
+		}
 	}
 	c.WriteCounter('T', c.ReadCounter('T')+1)
 

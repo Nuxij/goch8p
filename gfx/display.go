@@ -13,6 +13,7 @@ const (
 type PixelMsg struct {
 	Pixels []byte
 	Info   machine.Ch8pInfo
+	Callback  func()
 }
 
 type Display struct {
@@ -27,13 +28,7 @@ func NewDisplay(width, height uint16) *Display {
 		height: height,
 		mug:    NewFirmware(width, height),
 	}
-	display.firmware = tea.NewProgram(display.mug,
-		// Use the full size of the terminal in its "alternate screen buffer"
-		tea.WithAltScreen(),
-
-		// Also turn on mouse support so we can track the mouse wheel
-		tea.WithMouseAllMotion(),
-	)
+	display.firmware = tea.NewProgram(display.mug, tea.WithMouseCellMotion())
 	return display
 }
 

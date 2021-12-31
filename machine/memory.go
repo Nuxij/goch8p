@@ -1,6 +1,9 @@
 package machine
 
-import "fmt"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 // Memory is a byte array uint16 class
 type Memory []byte
@@ -9,7 +12,7 @@ func (m Memory) ReadByte(addr uint16) byte {
 	return m[addr]
 }
 func (m Memory) ReadWord(addr uint16) uint16 {
-	return (uint16(m[addr]) << 8) | uint16(m[addr+1])
+	return binary.LittleEndian.Uint16(m[addr : addr+1])
 }
 func (m Memory) ReadBytes(addr uint16, length uint16) []byte {
 	return m[addr : addr+length]
