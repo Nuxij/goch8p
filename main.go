@@ -46,12 +46,15 @@ func NewRunner(width, height uint16) *Runner {
 	if err != nil {
 		panic(err)
 	}
+	go r.VM.Pipeline()
 	p := r.VM.ReadCounter('P')
 	// Write 4,4 to V0 and V1
 	r.VM.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
+	// Write 4 to I
+	r.VM.WriteRAMBytes(p+0x04, []byte{0xA0, 0x0F})
 	// Draw V0 and V1 5 height
-	r.VM.WriteRAMBytes(p+0x0004, []byte{0xD0, 0x15})
-
+	r.VM.WriteRAMBytes(p+0x06, []byte{0xD0, 0x15})
+	
 	r.VM.WriteCounter('I', 0)
 	return r
 }
