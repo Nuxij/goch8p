@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AllenDang/giu"
 	"github.com/Nuxij/goch8p/gfx"
 	"github.com/Nuxij/goch8p/machine"
 )
@@ -20,42 +21,54 @@ type Runner struct {
 	Display gfx.Display
 }
 
-func NewRunner(width, height uint16) *Runner {
-	r := &Runner{
-		VM: &machine.Ch8p{
-			RAM: make(machine.Memory, RAM_SIZE),
-			V:   make(machine.Registers, 8),
-			Counters: machine.Counters{
-				'T': 0,
-				'O': 0,
-				'I': 0,
-				'S': 0,
-				'P': 0x200,
-			},
-			Stack:    machine.Stack{0},
-			GFX:      make(machine.Memory, width*height),
-			Keyboard: make(machine.Memory, KEYBOARD_SIZE),
-			Delay:    time.NewTicker(time.Second/60),
-			Sound:    time.NewTicker(time.Second/60),
-			LastOp:   "false",
+func NewRunner(width, height int) *Runner {
+	vm := &machine.Ch8p{
+		RAM: make(machine.Memory, RAM_SIZE),
+		V:   make(machine.Registers, 8),
+		Counters: machine.Counters{
+			'T': 0,
+			'O': 0,
+			'I': 0,
+			'S': 0,
+			'P': 0x200,
 		},
-		Display: &gfx.ImScreen{},
+		Stack:    machine.Stack{0},
+		GFX:      make(machine.Memory, width*height),
+		Keyboard: make(machine.Memory, KEYBOARD_SIZE),
+		Delay:    time.NewTicker(time.Second/60),
+		Sound:    time.NewTicker(time.Second/60),
+		LastOp:   "false",
 	}
-	r.VM.LoadFonts()
-	err := r.Display.Init(int(1440), int(900))
+	vm.LoadFonts()
+
+	display := &gfx.ImScreen{
+		Window: giu.NewMasterWindow("Joe", int(1440), int(900), giu.MasterWindowFlagsNotResizable),
+		Shortcuts: []giu.WindowShortcut{
+			{
+				Key:      giu.KeyR,
+				// Modifier: giu.ModControl,
+				Callback: func() { vm.Running = !vm.Running },
+			},
+		},
+	}
+	err := display.Init(int(1440), int(900))
 	if err != nil {
 		panic(err)
 	}
-	p := r.VM.ReadCounter('P')
-	// Write 4,4 to V0 and V1
-	r.VM.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
-	// Write 4 to I
-	r.VM.WriteRAMBytes(p+0x04, []byte{0xA0, 0x14})
-	// Draw V0 and V1 5 height
-	r.VM.WriteRAMBytes(p+0x06, []byte{0xD0, 0x15})
 	
-	r.VM.WriteCounter('I', 0)
-	return r
+	vm.WriteCounter('I', 0)
+	p := vm.ReadCounter('P')
+
+	vm.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
+	vm.WriteRAMBytes(p+0x04, []byte{0xA0, 0x14})
+	vm.WriteRAMBytes(p+0x06, []byte{0xD0, 0x15})
+
+	vm.WriteRAMBytes(p+0x08, []byte{0x60, 0x04, 0x61, 0x0A, 0xA0, 0x0A, 0xD0, 0x15})
+
+	return &Runner{
+		VM: vm,
+		Display: display,
+	}
 }
 
 func main() {
@@ -71,15 +84,17 @@ func main() {
 						fmt.Println("Hurts channel closed")
 						panic("shiot")
 					}
-					runner.VM.Tick()
+					runner.VM.Cycle()
 					runner.Display.Update(machine.Ch8pInfo{
 						Tick:   runner.VM.ReadCounter('T'),
 						Opcode: runner.VM.LastOp,
 						RAM:    runner.VM.RAM,
 						V:      runner.VM.V,
 						I:      runner.VM.ReadCounter('I'),
+						PC: 	runner.VM.ReadCounter('P'),
 						Stack:  runner.VM.Stack,
 						DrawFlag: runner.VM.DrawFlag,
+						Running: runner.VM.Running,
 					}, runner.VM.GFX)
 				}
 			}

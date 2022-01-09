@@ -11,7 +11,7 @@ func (o OperSys) Name() string {
 	return "Sys"
 }
 func (o OperSys) Execute(c *Ch8p, op Op) {
-	switch op.NN() {
+	switch op.KK() {
 	case 0x00E0:
 		c.ClearScreen()
 	case 0x00EE:
@@ -25,7 +25,7 @@ func (o OperJump) Name() string {
 	return "Jump"
 }
 func (o OperJump) Execute(c *Ch8p, op Op) {
-	// c.JumpToAddress(op.NNN())
+	c.WriteCounter('P', op.NNN())
 }
 
 type OperCall struct{}
@@ -167,31 +167,31 @@ func (o OperSpecial) Name() string {
 	return "Special"
 }
 func (o OperSpecial) Execute(c *Ch8p, op Op) {
-	// if o.NN() == 0x07 {
+	// if o.KK() == 0x07 {
 	// 	c.ReadDelayTimer(o.X())
 	// }
-	// if o.NN() == 0x0A {
+	// if o.KK() == 0x0A {
 	// 	c.WaitForKey(o.X())
 	// }
-	// if o.NN() == 0x15 {
+	// if o.KK() == 0x15 {
 	// 	c.LoadDelayTimer(o.X())
 	// }
-	// if o.NN() == 0x18 {
+	// if o.KK() == 0x18 {
 	// 	c.LoadSoundTimer(o.X())
 	// }
-	// if o.NN() == 0x1E {
+	// if o.KK() == 0x1E {
 	// 	c.AddToI(o.X())
 	// }
-	// if o.NN() == 0x29 {
+	// if o.KK() == 0x29 {
 	// 	c.LoadSprite(o.X())
 	// }
-	// if o.NN() == 0x33 {
+	// if o.KK() == 0x33 {
 	// 	c.Bcd(o.X())
 	// }
-	// if o.NN() == 0x55 {
+	// if o.KK() == 0x55 {
 	// 	c.StoreRegisters(o.X())
 	// }
-	// if o.NN() == 0x65 {
+	// if o.KK() == 0x65 {
 	// 	c.LoadRegisters(o.X())
 	// }
 

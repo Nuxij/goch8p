@@ -31,12 +31,12 @@ func (o Op) Y() byte {
 func (o Op) XY() (byte, byte) {
 	return o.X(), o.Y()
 }
-// N returns the byte in position N of the opcode (the lowest byte)
+// N returns the nibble in position N of the opcode (the lowest 4 bits)
 func (o Op) N() byte {
 	return byte(o.Code & 0x000F)
 }
-// NN returns the lowest two bytes of the opcode
-func (o Op) NN() uint16 {
+// KK returns the lowest byte of the opcode
+func (o Op) KK() uint16 {
 	return o.Code & 0x00FF
 }
 // NNN returns everything but the opcode itself (the lowest three bytes)

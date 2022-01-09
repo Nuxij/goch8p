@@ -11,6 +11,7 @@ type Ch8pInfo struct {
 	I        uint16    `json:"i",default:"0"`
 	Stack    Stack     `json:"stack",default:"[]"`
 	DrawFlag bool      `json:"drawflag",default:"false"`
+	Running  bool      `json:"running",default:"false"`
 }
 
 // 5-high sprite for fonts

@@ -17,15 +17,19 @@ type ImScreen struct {
 	pixels []byte
 	texture *giu.Texture
 	memoryWidget *giu.MemoryEditorWidget
+	Shortcuts []giu.WindowShortcut
 }
 
  func (s *ImScreen) Init(width, height int) error {
 	s.Title = "Goch8p::IMGUI"
-	window := giu.NewMasterWindow(s.Title, width, height, giu.MasterWindowFlagsNotResizable)
-	s.Window = window
 	s.Width = width
 	s.Height = height
+	s.Window.RegisterKeyboardShortcuts(s.Shortcuts...)
+	giu.Context.GetRenderer().SetTextureMinFilter(giu.TextureFilterNearest)
+	giu.Context.GetRenderer().SetTextureMagFilter(giu.TextureFilterNearest)
+
 	s.memoryWidget = giu.MemoryEditor()
+	
 	buffer, err := giu.LoadImage("gfx/gopher.png")
 	if err != nil {
 		return err
@@ -71,7 +75,17 @@ func (s *ImScreen) Draw() {
 						s.memoryWidget.Build()
 					}
 				}),
-				giu.Image(s.texture).Size(64*16, 32*16),
+				
+				giu.Child().Layout(
+					giu.Image(s.texture).Size(64*16, 32*16),
+					giu.Custom(func() {
+						if s.info.Running {
+							giu.Label("RUNNING")
+						} else {
+							giu.Label("STOPPED")
+						}
+					}),
+				),
 			),
 		),
 	)
@@ -91,8 +105,7 @@ func (s *ImScreen) Update(info machine.Ch8pInfo, pixels []byte) {
 	if ! s.info.DrawFlag {
 		giu.Update()
 	} else {
-		scale := 4
-		m := image.NewRGBA(image.Rect(0, 0, 64*scale, 32*scale))
+		m := image.NewRGBA(image.Rect(0, 0, 64, 32))
 		// fill m with pixels
 		if len(pixels) > 0 {
 			for i := 0; i < 64; i++ {
@@ -103,17 +116,12 @@ func (s *ImScreen) Update(info machine.Ch8pInfo, pixels []byte) {
 					if p == 1 {
 						p = 0xFF
 					}
-					c := color.RGBA{byte(int(p)+i*j), p, p, 0xFF}
-					x := i * scale
-					y := j * scale
-					for xx := 0; xx < scale; xx++ {
-						for yy := 0; yy < scale; yy++ {
-							m.Set(x+xx, y+yy, c)
-						}
-					}
+					c := color.RGBA{p, p, p, 0xFF}
+					m.Set(i, j, c)
 				}
 			}
 		}
+		s.buffer = m
 		giu.NewTextureFromRgba(m, func(texture *giu.Texture) {
 			s.texture = texture
 			giu.Update()

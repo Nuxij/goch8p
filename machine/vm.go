@@ -21,20 +21,27 @@ type Ch8p struct {
 	Sound    *time.Ticker
 	DrawFlag bool
 	LastOp   string `default:"none"`
-	pipeline chan Op
+	Running  bool
 }
 
-func (c *Ch8p) Tick() {
-	opcode := c.ReadInstruction()
-	c.DrawFlag = false
-	op := NewOp(opcode)
-	if op.Code == 0x0000 {
-		fmt.Printf("Opcode: %X\n", opcode)
-	} else {
-		c.LastOp = fmt.Sprintf("%v\n", op) + c.LastOp
-		op.Execute(c, op)
+func (c *Ch8p) Cycle() {
+	speed := 1
+	if c.Running {
+		for i := 0; i < speed; i++ {
+			opcode := c.ReadInstruction()
+			c.DrawFlag = false
+			op := NewOp(opcode)
+			if op.Code == 0x0000 {
+				continue
+			} else {
+				c.IncrementProgramCounter()
+				op.Execute(c, op)
+				c.LastOp = fmt.Sprintf("%v\n", op) + c.LastOp
+			}
+		}
+		c.IncrementCounter('T')	
 	}
-	c.IncrementCounter('T')
+	
 }
 
 // LoadFonts will put each of the fonts in Fonts into memory
@@ -81,7 +88,7 @@ func (c *Ch8p) IncrementProgramCounter() uint16 {
 }
 
 func (c *Ch8p) ReadInstruction() uint16 {
-	pc := c.IncrementProgramCounter()
+	pc := c.ReadCounter('P')
 	opbytes := c.ReadRAMBytes(pc, 2)
 	opcode := binary.BigEndian.Uint16(opbytes)
 	return opcode
