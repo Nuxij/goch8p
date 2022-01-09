@@ -14,28 +14,7 @@ func NewRegisterBank() Registers {
 	return make(Registers, 8)
 }
 
-type HexSprite [5]byte
-type Stack [16]uint16
-
-var HexSprites = [16]HexSprite{
-	HexSprite{0xF0, 0x90, 0x90, 0x90, 0xF0}, // 0
-	HexSprite{0x20, 0x60, 0x20, 0x20, 0x70}, // 1
-	HexSprite{0xF0, 0x10, 0xF0, 0x80, 0xF0}, // 2
-	HexSprite{0xF0, 0x10, 0xF0, 0x10, 0xF0}, // 3
-	HexSprite{0x90, 0x90, 0xF0, 0x10, 0x10}, // 4
-	HexSprite{0xF0, 0x80, 0xF0, 0x10, 0xF0}, // 5
-	HexSprite{0xF0, 0x80, 0xF0, 0x90, 0xF0}, // 6
-	HexSprite{0xF0, 0x10, 0x20, 0x40, 0x40}, // 7
-	HexSprite{0xF0, 0x90, 0xF0, 0x90, 0xF0}, // 8
-	HexSprite{0xF0, 0x90, 0xF0, 0x10, 0xF0}, // 9
-	HexSprite{0xF0, 0x90, 0xF0, 0x90, 0x90}, // A
-	HexSprite{0xE0, 0x90, 0xE0, 0x90, 0xE0}, // B
-	HexSprite{0xF0, 0x80, 0x80, 0x80, 0xF0}, // C
-	HexSprite{0xE0, 0x90, 0x90, 0x90, 0xE0}, // D
-	HexSprite{0xF0, 0x80, 0xF0, 0x80, 0xF0}, // E
-	HexSprite{0xF0, 0x80, 0xF0, 0x80, 0x80}, // F
-}
-
+// Ch8p is the CHIP-8 machine itself
 type Ch8p struct {
 	V        Registers
 	Counters Counters
@@ -49,83 +28,127 @@ type Ch8p struct {
 	LastOp   string `default:"none"`
 }
 
-func (c *Ch8p) Read(addr uint16) byte {
-	return c.RAM.ReadByte(addr)
+func (c *Ch8p) Tick() {
+	opcode := c.ReadInstruction()
+	c.drawFlag = false
+	c.ParseInstruction(opcode)
 }
 
-func (c *Ch8p) Write(addr uint16, value byte) {
-	c.RAM.WriteByte(addr, value)
-}
-func (c *Ch8p) WriteBytes(addr uint16, bytes []byte) {
-	c.RAM.WriteBytes(addr, bytes)
-}
-
-func (c *Ch8p) ReadRegister(reg uint8) Register {
-	return c.V[reg]
-}
-func (c *Ch8p) WriteRegister(reg uint8, value Register) {
-	c.V[reg] = value
-}
-
-func (c *Ch8p) ReadCounter(reg rune) uint16 {
-	return c.Counters[reg]
-}
-func (c *Ch8p) WriteCounter(reg rune, value uint16) {
-	c.Counters[reg] = value
+// LoadFonts will put each of the fonts in Fonts into memory
+func (c *Ch8p) LoadFonts() {
+	for i, font := range Fonts {
+		c.RAM.WriteBytes(uint16(i*5), font[:])
+	}
 }
 
 func (c *Ch8p) DrawSprite(x, y uint16, height uint16) {
-	// Draws a sprite at (x, y) with height N
-	// The sprite is stored in memory starting at I
-	// I is incremented after each byte is read
-	// The sprite is drawn starting at the current position
-	// If a pixel is set, the screen is set to 1
-	// If a pixel is not set, the screen is set to 0
-	// The screen is updated after each byte is read
-	for yPos := uint16(0); yPos < height; yPos++ {
-		spriteByte := c.RAM.ReadByte(c.ReadCounter('I') + yPos)
+	sprite := c.ReadRAMBytes(c.ReadCounter('I'), height)
+	for yPos, b := range sprite {
 		for xPos := uint16(0); xPos < 8; xPos++ {
-			if (spriteByte & (0x80 >> xPos)) != 0 {
-				c.GFX.WriteByte(x+xPos+((y+yPos)*64), 1)
+			if x + xPos >= 64 || y + uint16(yPos) >= 32 {
+				continue
+			}
+			pos := (y + uint16(yPos)) * 64 + x + xPos
+			onScreen := c.GFX.ReadByte(pos)
+			toBe := b & (0x80 >> xPos)
+			if toBe != 0 && onScreen != 0 {
+				c.GFX.WriteByte(pos, 0)
+				c.WriteRegister('F', 1)
+			} else if toBe != 0 && onScreen == 0 {
+				c.GFX.WriteByte(pos, 1)
 			}
 		}
+	}
+	c.WriteCounter('I', 0)
+	c.drawFlag = true
+}
+
+func (c *Ch8p) ClearScreen() {
+	for i := 0; i < len(c.GFX); i++ {
+		c.GFX.WriteByte(uint16(i), 0)
 	}
 	c.drawFlag = true
 }
 
-func (c *Ch8p) Tick() {
+func (c *Ch8p) IncrementProgramCounter() uint16 {
 	pc := c.ReadCounter('P')
-	// smallestByte := c.RAM.ReadByte(pc)
-	// largestByte := c.RAM.ReadByte(pc + 1)
-	opbytes := c.RAM.ReadBytes(pc, 2)
-	opcode := binary.LittleEndian.Uint16(opbytes)
-	// c.LastOp = fmt.Sprintf("%X", opcode)
-	// uint16(largestByte)<<8 | uint16(smallestByte)
-	instruction := (opcode & 0xF000)
-	lastOp := fmt.Sprintf("\n[%X, %X]", opcode, instruction)
-	c.drawFlag = false
+	c.WriteCounter('P', pc+2)
+	return pc
+}
 
+func (c *Ch8p) ReadInstruction() uint16 {
+	pc := c.IncrementProgramCounter()
+	opbytes := c.ReadRAMBytes(pc, 2)
+	opcode := binary.BigEndian.Uint16(opbytes)
+	return opcode
+}
+
+func (c *Ch8p) ParseInstruction(opcode uint16) {
+	instruction := (opcode & 0xF000)
+	lastOp := fmt.Sprintf("[%X, %X]", opcode, instruction)
 	switch instruction {
 	case 0xD000: // DXYN: Draw sprite at (VX, VY) with N bytes of sprite data
 		Vx := uint8(opcode & 0x0F00 >> 8)
 		Vy := uint8(opcode & 0x00F0 >> 4)
-		N := opcode & 0x000F // height of sprite
-		c.DrawSprite(uint16(c.ReadRegister(Vx)), uint16(c.ReadRegister(Vy)), N)
-		c.WriteCounter('P', pc+2)
-		c.LastOp = lastOp + " [0xDXYN]"
+		X := uint16(c.ReadRegister(Vx) & 63)
+		Y := uint16(c.ReadRegister(Vy) % 31)
+		height := uint16(opcode & 0x000F)
+
+		c.DrawSprite(X, Y, height)
+		lastOp += " 0xDXYN"
 	case 0xA000: // ANNN: Sets I to the address NNN.
 		c.WriteCounter('I', opcode&0x0FFF)
-		c.WriteCounter('P', pc+2)
-		c.LastOp = lastOp + " 0xANNN"
-	default:
-		if c.ReadCounter('T') % 10 == 0 {
-			c.LastOp = lastOp
-		} else {
-			c.LastOp = lastOp + c.LastOp 
-		}
+		lastOp += " 0xANNN"
+	case 0x6000: // 6XNN: Sets VX to NN.
+		Vx := uint8(opcode & 0x0F00 >> 8)
+		NN := opcode & 0x00FF
+		c.WriteRegister(Vx, Register(NN))
+		lastOp += " 0x6XNN"
 	}
-	c.WriteCounter('T', c.ReadCounter('T')+1)
+	lastOp += "\n"
+	if c.ReadCounter('T') % 1000 == 0 {
+		c.LastOp = lastOp
+	} else {
+		c.LastOp = lastOp + c.LastOp 
+	}
+	c.IncrementCounter('T')
+}
 
+// ReadRAM does what it says on the tin
+func (c *Ch8p) ReadRAM(addr uint16) byte {
+	return c.RAM.ReadByte(addr)
+}
+func (c *Ch8p) ReadRAMBytes(addr uint16, length uint16) []byte {
+	return c.RAM.ReadBytes(addr, length)
+}
+// WriteRAM does what it says on the tin
+func (c *Ch8p) WriteRAM(addr uint16, value byte) {
+	c.RAM.WriteByte(addr, value)
+}
+// WriteRAMBytes does WriteRAM but for a slice of bytes
+func (c *Ch8p) WriteRAMBytes(addr uint16, bytes []byte) {
+	c.RAM.WriteBytes(addr, bytes)
+}
+
+// ReadRegister does what it says on the tin
+func (c *Ch8p) ReadRegister(reg uint8) Register {
+	return c.V[reg]
+}
+// WriteRegister does what it says on the tin
+func (c *Ch8p) WriteRegister(reg uint8, value Register) {
+	c.V[reg] = value
+}
+// ReadCounter does what it says on the tin
+func (c *Ch8p) ReadCounter(reg rune) uint16 {
+	return c.Counters[reg]
+}
+// WriteCounter does what it says on the tin
+func (c *Ch8p) WriteCounter(reg rune, value uint16) {
+	c.Counters[reg] = value
+}
+// IncrementCounter does what it says on the tin
+func (c *Ch8p) IncrementCounter(reg rune) {
+	c.Counters[reg]++
 }
 
 // func (c *Ch8p) Debug() {

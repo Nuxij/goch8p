@@ -17,7 +17,7 @@ const (
 
 type Runner struct {
 	VM      *machine.Ch8p
-	Display *gfx.Display
+	Display gfx.Display
 }
 
 func NewRunner(width, height uint16) *Runner {
@@ -39,19 +39,25 @@ func NewRunner(width, height uint16) *Runner {
 			Sound:    time.NewTicker(time.Second/60),
 			LastOp:   "false",
 		},
-		Display: gfx.NewDisplay(width, height),
+		Display: &gfx.ImScreen{},
 	}
-	// initial program is a single draw call, 5 high sprite at 0,0
-	for i := uint16(0); i < 1; i++ {
-		r.VM.Write(r.VM.ReadCounter('P')+i, 0x45)
-		r.VM.Write(r.VM.ReadCounter('P')+i+1, 0xD4)
+	r.VM.LoadFonts()
+	err := r.Display.Init(int(1440), int(900))
+	if err != nil {
+		panic(err)
 	}
+	p := r.VM.ReadCounter('P')
+	// Write 4,4 to V0 and V1
+	r.VM.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
+	// Draw V0 and V1 5 height
+	r.VM.WriteRAMBytes(p+0x0004, []byte{0xD0, 0x15})
+
 	r.VM.WriteCounter('I', 0)
 	return r
 }
 
 func main() {
-	runner := NewRunner(128, 32)
+	runner := NewRunner(64, 32)
 	hurts := time.NewTicker(time.Second/1)
 	defer hurts.Stop()
 	go func() {
@@ -67,6 +73,7 @@ func main() {
 					runner.Display.Update(machine.Ch8pInfo{
 						Tick:   runner.VM.ReadCounter('T'),
 						Opcode: runner.VM.LastOp,
+						RAM:   runner.VM.RAM,
 					}, runner.VM.GFX)
 				}
 			}

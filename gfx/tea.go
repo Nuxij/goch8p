@@ -31,22 +31,48 @@ var (
 
 type Firmware struct {
 	tea.Model
-	width, height uint16
+	width, height int
 	ready 	   bool
 	ram           machine.Memory
-	Machine       machine.Ch8pInfo
-	eventChannel chan tea.Msg
+	info     chan machine.Ch8pInfo
+	events   chan tea.Msg
 }
 
-func NewFirmware(width, height uint16) *Firmware {
+type TeaScreen struct {
+	width    , height int
+	firmware *Firmware
+	mug *tea.Program
+}
+
+func (t *TeaScreen) Init(width, height int) error {
+	t.width = width
+	t.height = height
+	t.firmware = NewFirmware(width, height)
+	t.mug = tea.NewProgram(t.firmware, tea.WithMouseCellMotion())
+	return nil
+}
+
+func (t *TeaScreen) Start() error {
+	return t.mug.Start()
+}
+
+func (t *TeaScreen) Update(info machine.Ch8pInfo, pixels []byte) {
+	t.mug.Send(PixelMsg{
+		Pixels: pixels,
+		Info:   info,
+	})
+}
+
+func NewFirmware(width, height int) *Firmware {
 	fw := &Firmware{
 		ready:	false,
 		width:  width,
 		height: height,
 		ram:    make(machine.Memory, width*height),
+		info:   make(chan machine.Ch8pInfo, 1),
 	}
-	for i := uint16(0); i < fw.width*fw.height; i++ {
-		fw.ram.WriteByte(i, 9)
+	for i := 0; i < fw.width*fw.height; i++ {
+		fw.ram.WriteByte(uint16(i), 9)
 	}
 	return fw
 }
@@ -65,14 +91,14 @@ func (fw *Firmware) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		// Is it a key press?
 		case PixelMsg:
-			fw.Machine = msg.Info
+			fw.info <- msg.Info
 			for i, b := range msg.Pixels {
 				fw.ram.WriteByte(uint16(i), b)
 			}
 		case tea.MouseMsg:
 			// left click
 			if msg.Type == tea.MouseLeft {
-				fw.ram.WriteByte(uint16(msg.X)+uint16(msg.Y)*fw.width, 0xFF)
+				fw.ram.WriteByte(uint16(msg.X+msg.Y*fw.width), 0xFF)
 			}
 	}
 
@@ -89,9 +115,9 @@ func (fw *Firmware) View() string {
 
 func mapView(fw *Firmware) string {
 	var s string
-	for y := uint16(0); y < fw.height; y++ {
-		for x := uint16(0); x < fw.width; x++ {
-			s += fmt.Sprintf("%v", fw.ram.ReadByte(x+y*fw.width))
+	for y := 0; y < fw.height; y++ {
+		for x := 0; x < fw.width; x++ {
+			s += fmt.Sprintf("%v", fw.ram.ReadByte(uint16(x+y*fw.width)))
 		}
 		s += "\n"
 	}
@@ -99,9 +125,17 @@ func mapView(fw *Firmware) string {
 }
 
 func statsView(fw *Firmware) string {
-	var s string
-	s += fmt.Sprintf("Tick %v\n", fw.Machine.Tick)
-	s += fmt.Sprintf("Opc %v\n", fw.Machine.Opcode)
+	s := fmt.Sprintf("%vx%v\n", fw.width, fw.height)
+	select {
+	case info, ok := <- fw.info:
+		if !ok {
+			return "INFO CHANNEL CLOSED"
+		}
+		s += fmt.Sprintf("Tick %v\n", info.Tick)
+		s += fmt.Sprintf("Opc %v\n", info.Opcode)
+	default:
+		s += "NO INFO"
+	}
 	return StyleDefault.Render(s)
 }
 

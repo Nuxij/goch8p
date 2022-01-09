@@ -26,8 +26,10 @@ func (m Memory) WriteWord(addr uint16, value uint16) {
 }
 func (m Memory) WriteBytes(addr uint16, bytes []byte) {
 	for i, b := range bytes {
+		fmt.Sprintf("%v", b)
 		m[addr+uint16(i)] = b
 	}
+	fmt.Println()
 }
 func (m Memory) String() string {
 	return fmt.Sprintf("%v", m)
