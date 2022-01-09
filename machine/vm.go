@@ -114,6 +114,43 @@ func (c *Ch8p) ParseInstruction(opcode uint16) {
 	c.IncrementCounter('T')
 }
 
+var opcodes = map[uint16]string {
+	0x00E0: "CLS",
+	0x00EE: "RET",
+	0x1000: "1NNN",
+	0x2000: "2NNN",
+	0x3000: "3XNN",
+	0x4000: "4XNN",
+	0x5000: "5XY0",
+	0x6000: "6XNN",
+	0x7000: "7XNN",
+	0x8000: "8XY0",
+	0x8001: "8XY1",
+	0x8002: "8XY2",
+	0x8003: "8XY3",
+	0x8004: "8XY4",
+	0x8005: "8XY5",
+	0x8006: "8XY6",
+	0x8007: "8XY7",
+	0x800E: "8XYE",
+	0x9000: "9XY0",
+	0xA000: "ANNN",
+	0xB000: "BNNN",
+	0xC000: "CXNN",
+	0xD000: "DXYN",
+	0xE09E: "EX9E",
+	0xE0A1: "EXA1",
+	0xF007: "FX07",
+	0xF00A: "FX0A",
+	0xF015: "FX15",
+	0xF018: "FX18",
+	0xF01E: "FX1E",
+	0xF029: "FX29",
+	0xF033: "FX33",
+	0xF055: "FX55",
+	0xF065: "FX65",
+}
+
 // ReadRAM does what it says on the tin
 func (c *Ch8p) ReadRAM(addr uint16) byte {
 	return c.RAM.ReadByte(addr)
