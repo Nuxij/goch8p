@@ -51,7 +51,7 @@ func NewRunner(width, height uint16) *Runner {
 	// Write 4,4 to V0 and V1
 	r.VM.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
 	// Write 4 to I
-	r.VM.WriteRAMBytes(p+0x04, []byte{0xA0, 0x0F})
+	r.VM.WriteRAMBytes(p+0x04, []byte{0xA0, 0x14})
 	// Draw V0 and V1 5 height
 	r.VM.WriteRAMBytes(p+0x06, []byte{0xD0, 0x15})
 	
@@ -77,6 +77,10 @@ func main() {
 						Tick:   runner.VM.ReadCounter('T'),
 						Opcode: runner.VM.LastOp,
 						RAM:   runner.VM.RAM,
+						V:      runner.VM.V,
+						I:      runner.VM.ReadCounter('I'),
+						Stack:  runner.VM.Stack,
+						
 					}, runner.VM.GFX)
 				}
 			}

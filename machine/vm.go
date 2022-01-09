@@ -34,6 +34,7 @@ func (c *Ch8p) Tick() {
 		c.LastOp = fmt.Sprintf("%v\n", op) + c.LastOp
 		c.pipeline <- op
 	}
+	c.IncrementCounter('T')
 }
 
 // LoadFonts will put each of the fonts in Fonts into memory
@@ -90,7 +91,6 @@ func (c *Ch8p) Pipeline() {
 	for op := range c.pipeline {
 		op.Execute(c, op)
 		// c.ParseInstruction(op)
-		c.IncrementCounter('T')
 	}
 }
 

@@ -31,8 +31,6 @@ type ImScreen struct {
 		return err
 	}
 	s.buffer = buffer
-	// image.NewRGBA(image.Rect(0, 0, 64, 32))
-	
 	return nil
 }
 
@@ -46,11 +44,26 @@ func (s *ImScreen) Start() error {
 }
 
 func (s *ImScreen) Draw() {
+	stack := []interface{}{}
+	stackPointer := s.info.Stack[len(s.info.Stack)-1]
+	for i := 0; i < 16; i++ {
+		stack = append(stack, s.info.Stack[i])
+	}
 	giu.SingleWindow().Layout(
 		giu.SplitLayout(giu.DirectionHorizontal, float32(s.Width)/8,
-			giu.Child().Layout(
-				giu.Labelf("Goch8p::IMGUI %d", s.info.Tick),
-				giu.Labelf("OP: %v", s.info.Opcode),
+			giu.SplitLayout(giu.DirectionVertical, float32(s.Height)/4,
+				giu.Child().Layout(
+					giu.Labelf("Goch8p::IMGUI %d", s.info.Tick),
+					giu.Labelf("PC: %d", s.info.PC),
+					giu.Labelf("I: %d", s.info.I),
+					giu.Labelf("Operation: \n%v", s.info.Opcode),
+				),
+				giu.Child().Layout(
+					giu.Labelf("Stack [%X]", stackPointer),
+					giu.RangeBuilder("Stacks", stack, func(i int, v interface{}) giu.Widget {
+						return giu.Labelf("%2d: %X", i, v.(uint16))
+					}),
+				),
 			),
 			giu.SplitLayout(giu.DirectionVertical, float32(s.Height)/4,
 				giu.Custom(func() {
@@ -94,8 +107,6 @@ func (s *ImScreen) Update(info machine.Ch8pInfo, pixels []byte) {
 			}
 		}
 	}
-
-	
 	if len(s.info.RAM) > 0 {
 		s.memoryWidget.Contents(s.info.RAM[0x200:0x300])
 	}

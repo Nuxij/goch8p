@@ -1,11 +1,15 @@
 package machine
 
 type Ch8pInfo struct {
-	Name    string `json:"name",default:"joeks ch8p"`
-	Version string `json:"version",default:"0.0.1"`
-	Tick    uint16 `json:"tick",default:"0"`
-	Opcode  string `json:"opcode",default:"none"`
-	RAM     []byte `json:"ram",default:"[]"`
+	Name    string    `json:"name",default:"joeks ch8p"`
+	Version string    `json:"version",default:"0.0.1"`
+	Tick    uint16    `json:"tick",default:"0"`
+	Opcode  string    `json:"opcode",default:"none"`
+	RAM     []byte    `json:"ram",default:"[]"`
+	PC      uint16    `json:"pc",default:"0"`
+	V       Registers `json:"v",default:"[]"`
+	I       uint16    `json:"i",default:"0"`
+	Stack   Stack     `json:"stack",default:"[]"`
 }
 
 // 5-high sprite for fonts
