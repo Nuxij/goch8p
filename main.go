@@ -46,7 +46,6 @@ func NewRunner(width, height uint16) *Runner {
 	if err != nil {
 		panic(err)
 	}
-	go r.VM.Pipeline()
 	p := r.VM.ReadCounter('P')
 	// Write 4,4 to V0 and V1
 	r.VM.WriteRAMBytes(p, []byte{0x60, 0x04, 0x61, 0x04})
@@ -76,11 +75,11 @@ func main() {
 					runner.Display.Update(machine.Ch8pInfo{
 						Tick:   runner.VM.ReadCounter('T'),
 						Opcode: runner.VM.LastOp,
-						RAM:   runner.VM.RAM,
+						RAM:    runner.VM.RAM,
 						V:      runner.VM.V,
 						I:      runner.VM.ReadCounter('I'),
 						Stack:  runner.VM.Stack,
-						
+						DrawFlag: runner.VM.DrawFlag,
 					}, runner.VM.GFX)
 				}
 			}

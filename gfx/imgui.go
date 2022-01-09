@@ -84,36 +84,40 @@ func (s *ImScreen) Close() {
 func (s *ImScreen) Update(info machine.Ch8pInfo, pixels []byte) {
 	s.info = info
 	s.pixels = pixels
-	scale := 4
-	m := image.NewRGBA(image.Rect(0, 0, 64*scale, 32*scale))
-	// fill m with pixels
-	if len(pixels) > 0 {
-		for i := 0; i < 64; i++ {
-			for j := 0; j < 32; j++ {
-				index := i+j*64
-				p := s.pixels[index]
-				// px := byte(i+j)
-				if p == 1 {
-					p = 0xFF
-				}
-				c := color.RGBA{byte(int(p)+i*j), p, p, 0xFF}
-				x := i * scale
-				y := j * scale
-				for xx := 0; xx < scale; xx++ {
-					for yy := 0; yy < scale; yy++ {
-						m.Set(x+xx, y+yy, c)
+	
+	if len(s.info.RAM) > 0{
+		s.memoryWidget.Contents(s.info.RAM[0x200:0x300])
+	}
+	if ! s.info.DrawFlag {
+		giu.Update()
+	} else {
+		scale := 4
+		m := image.NewRGBA(image.Rect(0, 0, 64*scale, 32*scale))
+		// fill m with pixels
+		if len(pixels) > 0 {
+			for i := 0; i < 64; i++ {
+				for j := 0; j < 32; j++ {
+					index := i+j*64
+					p := s.pixels[index]
+					// px := byte(i+j)
+					if p == 1 {
+						p = 0xFF
+					}
+					c := color.RGBA{byte(int(p)+i*j), p, p, 0xFF}
+					x := i * scale
+					y := j * scale
+					for xx := 0; xx < scale; xx++ {
+						for yy := 0; yy < scale; yy++ {
+							m.Set(x+xx, y+yy, c)
+						}
 					}
 				}
 			}
 		}
+		giu.NewTextureFromRgba(m, func(texture *giu.Texture) {
+			s.texture = texture
+			giu.Update()
+		})
 	}
-	if len(s.info.RAM) > 0 {
-		s.memoryWidget.Contents(s.info.RAM[0x200:0x300])
-	}
-	giu.NewTextureFromRgba(m, func(texture *giu.Texture) {
-		s.texture = texture
-		giu.Update()
-	})
-	
 }
 

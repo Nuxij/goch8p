@@ -19,20 +19,20 @@ type Ch8p struct {
 	Keyboard Memory
 	Delay    *time.Ticker
 	Sound    *time.Ticker
-	drawFlag bool
+	DrawFlag bool
 	LastOp   string `default:"none"`
 	pipeline chan Op
 }
 
 func (c *Ch8p) Tick() {
 	opcode := c.ReadInstruction()
-	c.drawFlag = false
+	c.DrawFlag = false
 	op := NewOp(opcode)
 	if op.Code == 0x0000 {
 		fmt.Printf("Opcode: %X\n", opcode)
 	} else {
 		c.LastOp = fmt.Sprintf("%v\n", op) + c.LastOp
-		c.pipeline <- op
+		op.Execute(c, op)
 	}
 	c.IncrementCounter('T')
 }
@@ -64,14 +64,14 @@ func (c *Ch8p) DrawSprite(x, y uint16, height uint16) {
 		}
 	}
 	c.WriteCounter('I', 0)
-	c.drawFlag = true
+	c.DrawFlag = true
 }
 
 func (c *Ch8p) ClearScreen() {
 	for i := 0; i < len(c.GFX); i++ {
 		c.GFX.WriteByte(uint16(i), 0)
 	}
-	c.drawFlag = true
+	c.DrawFlag = true
 }
 
 func (c *Ch8p) IncrementProgramCounter() uint16 {
@@ -85,13 +85,6 @@ func (c *Ch8p) ReadInstruction() uint16 {
 	opbytes := c.ReadRAMBytes(pc, 2)
 	opcode := binary.BigEndian.Uint16(opbytes)
 	return opcode
-}
-func (c *Ch8p) Pipeline() {
-	c.pipeline = make(chan Op, 1)
-	for op := range c.pipeline {
-		op.Execute(c, op)
-		// c.ParseInstruction(op)
-	}
 }
 
 // ReadRAM does what it says on the tin
