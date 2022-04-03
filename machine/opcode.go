@@ -2,10 +2,34 @@ package machine
 
 import "fmt"
 
+// Oper interface allows Ops to override execution behavior
+type Oper interface {
+	Name() string
+	Execute(c *Ch8p, op OpCode)
+}
+
+type OpCode interface {
+	Oper
+	Op() uint16
+	OpClass() byte
+	X() byte
+	Y() byte
+	XY() (byte, byte)
+	N() byte
+	KK() uint16
+	NNN() uint16
+	Name() string
+}
+
 // Op will store a code and Execute via an Oper
 type Op struct {
-	Oper
 	Code uint16
+	name string
+	call func(c *Ch8p)
+}
+// Name prints the name to match Oper
+func (o Op) Name() string {
+	return o.name
 }
 // String implements the Stringer interface
 func (o Op) String() string {
@@ -42,45 +66,4 @@ func (o Op) KK() uint16 {
 // NNN returns everything but the opcode itself (the lowest three bytes)
 func (o Op) NNN() uint16 {
 	return o.Code & 0x0FFF
-}
-
-// NewOp returns a new Op with the given code.
-func NewOp(opcode uint16) Op {
-	switch opcode & 0xF000 >> 12 {
-	case 0x0:
-		return Op{Oper: OperSys{}, Code: opcode}
-	case 0x1:
-		return Op{Oper: OperJump{}, Code: opcode}
-	case 0x2:
-		return Op{Oper: OperCall{}, Code: opcode}
-	case 0x3:
-		return Op{Oper: OperSE{}, Code: opcode}
-	case 0x4:
-		return Op{Oper: OperSNE{}, Code: opcode}
-	case 0x5:
-		return Op{Oper: OperSE{}, Code: opcode}
-	case 0x6:
-		return Op{Oper: OperLD{}, Code: opcode}
-	case 0x7:
-		return Op{Oper: OperADD{}, Code: opcode}
-	case 0x8:
-		return Op{Oper: OperBit{}, Code: opcode}
-	case 0x9:
-		return Op{Oper: OperSNE{}, Code: opcode}
-	case 0xA:
-		return Op{Oper: OperLDI{}, Code: opcode}
-	case 0xB:
-		return Op{Oper: OperJPV0{}, Code: opcode}
-	case 0xC:
-		return Op{Oper: OperRND{}, Code: opcode}
-	case 0xD:
-		return Op{Oper: OperDRW{}, Code: opcode}
-	case 0xE:
-		return Op{Oper: OperSKP{}, Code: opcode}
-	case 0xF:
-		return Op{Oper: OperSpecial{}, Code: opcode}
-	default:
-		fmt.Printf("Unknown opcode: %X\n", opcode)
-		return Op{Oper: OperSys{}, Code: 0x0000}
-	}
 }

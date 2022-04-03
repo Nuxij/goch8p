@@ -4,6 +4,11 @@ My attempt at a CHIP-8 "emulator"
 
 ![example](working.png)
 
+
+References:
+* https://www.youtube.com/watch?v=V3ORJUS9YP4
+  
+![Memory Map](memory_map.png)
 ## Status
 - [X] Tick Rate (60Hz)
 - [X] Memory (4096 bytes)
@@ -14,8 +19,9 @@ My attempt at a CHIP-8 "emulator"
 - [X] Display (64x32)
 - [X] Fontset (5x8, 0-F)
 - [ ] Timers (Sound, Delay)
-- [ ] Opcodes
+- [ ] Opcodes ![opcodes](opcodes.png)
   - [ ] 0x00E0: "CLS",
+  - [ ] 0x00EC: "YIELD",
   - [ ] 0x00EE: "RET",
   - [ ] 0x1000: "1NNN",
   - [ ] 0x2000: "2NNN",

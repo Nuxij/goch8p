@@ -1,16 +1,86 @@
 package machine
 
-type Oper interface {
-	Name() string
-	Execute(c *Ch8p, op Op)
+import "fmt"
+
+// NewOp calls NewOper and returns it cast to an OpCode
+func NewOp(opcode uint16) OpCode {
+	return NewOper(opcode).(OpCode)
+}
+// NewOper returns a new Oper with the given code.
+func NewOper(opcode uint16) Oper {
+	op := Op{Code: opcode}
+	var oper Oper
+	switch op.OpClass() {
+	case 0x0:
+		op.name = "Sys"
+		oper = OperSys{op}
+	case 0x1:
+		op.name = "Jump"
+		oper = OperJump{op}
+	case 0x2:
+		op.name = "Call"
+		oper = OperCall{op}
+	case 0x3:
+		op.name = "SkipEqual"
+		oper = OperSE{op}
+	case 0x4:
+		op.name = "SkipNotEqual"
+		oper = OperSNE{op}
+	case 0x5:
+		op.name = "SkipEqual:XY"
+		oper = OperSEXY{op}
+	case 0x6:
+		op.name = "Load"
+		oper = OperLD{op}
+	case 0x7:
+		op.name = "Add"
+		oper = OperADD{op}
+	case 0x8:
+		op.name = "Bit"
+		oper = OperBit{op}
+	case 0x9:
+		op.name = "SkipNotEqual:XY"
+		oper = OperSNEXY{op}
+	case 0xA:
+		op.name = "Load:I"
+		oper = OperLDI{op}
+	case 0xB:
+		op.name = "JumpV0"
+		oper = OperJPV0{op}
+	case 0xC:
+		op.name = "RandomByte"
+		oper = OperRND{op}
+	case 0xD:
+		op.name = "Draw"
+		oper = OperDRW{op}
+	case 0xE:
+		switch op.KK() {
+		case 0x9E:
+			op.name = "SkipIfPressed"
+			oper = OperSKP{op}
+		case 0xA1:
+			op.name = "SkipIfNotPressed"
+			oper = OperSKNP{op}
+		}
+	case 0xF:
+		op.name = "Special"
+		oper = OperSpecial{op}
+	default:
+	fmt.Printf("Unknown opcode: %X\n", opcode)
+	op.name = "Unknown"
+	op.Code = 0x0
+	oper = OperSys{op}
+	}
+	oper.(OpCode).call = func(c *Ch8p) {
+		
+	}
+	return oper
 }
 
-type OperSys struct{}
-
-func (o OperSys) Name() string {
-	return "Sys"
-}
-func (o OperSys) Execute(c *Ch8p, op Op) {
+// OperSys are the system instructions.
+type OperSys struct{ Op }
+// Execute the op
+func (o OperSys) Execute(c *Ch8p, op OpCode) {
 	switch op.KK() {
 	case 0x00E0:
 		c.ClearScreen()
@@ -19,74 +89,80 @@ func (o OperSys) Execute(c *Ch8p, op Op) {
 	}
 }
 
-type OperJump struct{}
-
-func (o OperJump) Name() string {
-	return "Jump"
-}
-func (o OperJump) Execute(c *Ch8p, op Op) {
+// OperJump sets the program counter to the address in the operand.
+type OperJump struct{ Op }
+// Execute the op
+func (o OperJump) Execute(c *Ch8p, op OpCode) {
 	c.WriteCounter('P', op.NNN())
 }
 
-type OperCall struct{}
-
-func (o OperCall) Name() string {
-	return "Call"
-}
-func (o OperCall) Execute(c *Ch8p, op Op) {
+// OperCall calls a subroutine (likely by pushing to the stack and program counter).
+type OperCall struct{ Op }
+// Execute the op
+func (o OperCall) Execute(c *Ch8p, op OpCode) {
 	// c.CallSubroutine(op.NNN())
 }
 
-type OperSE struct{}
-
-func (o OperSE) Name() string {
-	return "SkipIfEqual"
-}
-func (o OperSE) Execute(c *Ch8p, op Op) {
+// OperSE is the skip if equal instruction.
+type OperSE struct{ Op }
+// Execute the op
+func (o OperSE) Execute(c *Ch8p, op OpCode) {
 	Vx := c.ReadRegister(op.X())
 	if Vx == op.N() {
 		c.IncrementProgramCounter()
 	}
 }
 
-type OperSNE struct{}
-
-func (o OperSNE) Name() string {
-	return "SkipIfNotEqual"
-}
-func (o OperSNE) Execute(c *Ch8p, op Op) {
+// OperSNE is the skip if not equal instruction.
+type OperSNE struct{ Op }
+// Execute the op
+func (o OperSNE) Execute(c *Ch8p, op OpCode) {
 	Vx := c.ReadRegister(op.X())
 	if Vx != op.N() {
 		c.IncrementProgramCounter()
 	}
 }
 
-type OperLD struct{}
-
-func (o OperLD) Name() string {
-	return "Load"
+// OperSEXY will skip if X and Y registers are equal
+type OperSEXY struct{ Op }
+// Execute the op
+func (o OperSEXY) Execute(c *Ch8p, op OpCode) {
+	Vx := c.ReadRegister(op.X())
+	if Vx != op.N() {
+		c.IncrementProgramCounter()
+	}
 }
-func (o OperLD) Execute(c *Ch8p, op Op) {
+
+// OperSNEXY will skip if X and Y registers are not equal
+type OperSNEXY struct{ Op }
+// Execute the op
+func (o OperSNEXY) Execute(c *Ch8p, op OpCode) {
+	Vx := c.ReadRegister(op.X())
+	if Vx != op.N() {
+		c.IncrementProgramCounter()
+	}
+}
+
+// OperLD will load the value in the operand into the register.
+type OperLD struct{ Op }
+// Execute the op
+func (o OperLD) Execute(c *Ch8p, op OpCode) {
 	c.WriteRegister(op.X(), op.N())
 }
 
-type OperADD struct{}
-
-func (o OperADD) Name() string {
-	return "Add"
-}
-func (o OperADD) Execute(c *Ch8p, op Op) {
+// OperADD adds the value in the operand to the register.
+type OperADD struct{ Op }
+// Execute the op
+func (o OperADD) Execute(c *Ch8p, op OpCode) {
 	Vx := c.ReadRegister(op.X())
 	Vy := c.ReadRegister(op.N())
 	c.WriteRegister(op.X(), Vx+Vy)
 }
 
-type OperBit struct{}
-
-func (o OperBit) Name() string {
-	return "Bit"
-}
-func (o OperBit) Execute(c *Ch8p, op Op) {
+// OperBit will handle BitWise operations and other related operations.
+type OperBit struct{ Op }
+// Execute the op
+func (o OperBit) Execute(c *Ch8p, op OpCode) {
 	switch op.N() {
 	case 0x0:
 		c.WriteRegister(op.X(), c.ReadRegister(op.Y()))
@@ -109,39 +185,31 @@ func (o OperBit) Execute(c *Ch8p, op Op) {
 	}
 }
 
-type OperLDI struct{}
-
-func (o OperLDI) Name() string {
-	return "LoadI"
-}
-func (o OperLDI) Execute(c *Ch8p, op Op) {
+// OperLDI will load the value in the operand into the 'I' counter.
+type OperLDI struct{ Op }
+// Execute the op
+func (o OperLDI) Execute(c *Ch8p, op OpCode) {
 	c.WriteCounter('I', op.NNN())
 }
 
-type OperJPV0 struct{}
-
-func (o OperJPV0) Name() string {
-	return "JumpV0"
-}
-func (o OperJPV0) Execute(c *Ch8p, op Op) {
+// OperJPV0 will jump to the address in the operand plus the value in the 'V0' register.
+type OperJPV0 struct{ Op }
+// Execute the op
+func (o OperJPV0) Execute(c *Ch8p, op OpCode) {
 	// c.JumpToAddress(op.NNN() + c.ReadRegister(0))
 }
 
-type OperRND struct{}
-
-func (o OperRND) Name() string {
-	return "Random"
-}
-func (o OperRND) Execute(c *Ch8p, op Op) {
+// OperRND will set the register to a random number between 0 and the operand.
+type OperRND struct{ Op }
+// Execute the op
+func (o OperRND) Execute(c *Ch8p, op OpCode) {
 	// c.WriteRegister(op.X(), c.Random(op.N()))
 }
 
-type OperDRW struct{}
-
-func (o OperDRW) Name() string {
-	return "Draw"
-}
-func (o OperDRW) Execute(c *Ch8p, op Op) {
+// OperDRW will draw a sprite at the x,y position from X,Y registers in the operand.
+type OperDRW struct{ Op }
+// Execute the op
+func (o OperDRW) Execute(c *Ch8p, op OpCode) {
 	Vx := op.X()
 	Vy := op.Y()
 	X := uint16(c.ReadRegister(Vx) & 63)
@@ -150,23 +218,28 @@ func (o OperDRW) Execute(c *Ch8p, op Op) {
 	c.DrawSprite(X, Y, height)
 }
 
-type OperSKP struct{}
-
-func (o OperSKP) Name() string {
-	return "SkipIfKeyPressed"
-}
-func (o OperSKP) Execute(c *Ch8p, op Op) {
+// OperSKP will skip the next instruction if the key in the operand is pressed.
+type OperSKP struct{ Op }
+// Execute the op
+func (o OperSKP) Execute(c *Ch8p, op OpCode) {
 	// if c.KeyPressed(op.X()) {
 	// 	c.IncrementProgramCounter()
 	// }
 }
 
-type OperSpecial struct{}
-
-func (o OperSpecial) Name() string {
-	return "Special"
+// OperSKNP will skip the next instruction if the key in the operand is not pressed.
+type OperSKNP struct{ Op }
+// Execute the op
+func (o OperSKNP) Execute(c *Ch8p, op OpCode) {
+	// if c.KeyPressed(op.X()) {
+	// 	c.IncrementProgramCounter()
+	// }
 }
-func (o OperSpecial) Execute(c *Ch8p, op Op) {
+
+// OperSpecial will handle special operations like delay, sound + input.
+type OperSpecial struct{ Op }
+// Execute the op
+func (o OperSpecial) Execute(c *Ch8p, op OpCode) {
 	// if o.KK() == 0x07 {
 	// 	c.ReadDelayTimer(o.X())
 	// }

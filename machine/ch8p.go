@@ -19,9 +19,6 @@ type Ch8p struct {
 	Keyboard Memory
 	Delay    *time.Ticker
 	Sound    *time.Ticker
-	DrawFlag bool
-	LastOp   string `default:"none"`
-	Running  bool
 }
 
 func (c *Ch8p) Cycle() {
@@ -31,7 +28,7 @@ func (c *Ch8p) Cycle() {
 			opcode := c.ReadInstruction()
 			c.DrawFlag = false
 			op := NewOp(opcode)
-			if op.Code == 0x0000 {
+			if op.Op() == 0x0000 {
 				continue
 			} else {
 				c.IncrementProgramCounter()
