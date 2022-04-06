@@ -8,18 +8,31 @@ import (
 
 func TestCPU_ExecuteInstruction(t *testing.T) {
 	cpu := NewCPU(NewRAM(0x1000))
-	assert.Equal(t, len(cpu.opcodes), 4)
-	cpu.ram.Writes(0x0, []byte{0x00, 0xE0})
-	cpu.stack.Push(0x200) // Dummy stack value so 0x00EE doesn't fail
-	for _, v := range []uint16{0x00E0, 0x00EC, 0x00EE, 0xA000} {
-		err := cpu.ExecuteInstruction(v)
-		if err != nil {
-			t.Errorf("Expected no error for 0x%X, got %v", v, err)
-		}
+	assert.Equal(t, len(cpu.opcodes), 1)
+
+	cpu.ram.Writes(0x0, []byte{0x00, 0xE0}) // clearscreen in memory for testing read + exec
+	cpu.stack.Push(0x200)                   // Dummy stack value so 0x00EE doesn't fail
+
+	type op struct {
+		code uint16
+		err  error
 	}
-	for _, v := range []uint16{0x00FF, 0x1000, 0x6000, 0x7000, 0xD000, 0xF000} {
-		err := cpu.ExecuteInstruction(v)
-		assert.IsType(t, InstructionUnknown{}, err)
+	var ops = []op{
+		{0x00E0, InstructionOk{}},
+		{0x00EC, nil},
+		{0x00EE, nil},
+		{0xA000, nil},
+		{0x00FF, InstructionUnknown{}},
+		{0x1000, InstructionUnknown{}},
+		{0xD000, InstructionUnknown{}},
+		{0xF000, InstructionUnknown{}},
+		{0x7000, InstructionUnknown{}},
+		{0x6000, InstructionUnknown{}},
+	}
+
+	for _, v := range ops {
+		err := cpu.ExecuteInstruction(v.code)
+		assert.IsTypef(t, v.err, err, "expecting %X to error with %v", v.code, v.err)
 	}
 
 }
