@@ -117,7 +117,7 @@ func (r *Rammer) readThrough(addr uint16) (byte, error) {
 
 func (r *Rammer) Reads(addr uint16, size uint16) ([]byte, error) {
 	if region, err := r.checkBounds(addr); err != nil {
-		return nil, fmt.Errorf("cannot read: %w", err)
+		return nil, fmt.Errorf("fail: Reads(%w)", err)
 	} else {
 		deviceAddr := region.Devices[0].Offset + (addr - region.Start)
 		if deviceAddr+size > region.Devices[0].Size {

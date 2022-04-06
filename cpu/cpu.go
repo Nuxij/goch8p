@@ -1,6 +1,8 @@
 package cpu
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -12,6 +14,7 @@ type CPU struct {
 	sp      uint16
 	index   uint16
 	stack   *Stack
+	v 		[16]uint16
 	screen  Screen
 	opcodes []InstructionHandler
 }
@@ -19,10 +22,6 @@ type CPU struct {
 func RandomStringUUID() string {
 	id, _ := uuid.NewUUID()
 	return fmt.Sprintf("%v", id)
-}
-
-func (c *CPU) CallInstruction(handler InstructionHandler, opcode uint16) error {
-	return handler.HandleInstruction(opcode)
 }
 
 type Screen struct {
@@ -56,23 +55,41 @@ func NewCPU(ram Device) *CPU {
 	for _, i := range AllOpcodes {
 		cpu.opcodes = append(cpu.opcodes, i.Register(cpu))
 	}
+	cpu.LoadFonts()
 	return cpu
 }
 
+// LoadFonts will put each of the fonts in Fonts into memory
+func (c *CPU) LoadFonts() {
+	for i, font := range Fonts {
+		c.ram.Writes(uint16(i*5), font[:])
+	}
+}
+
+func (c *CPU) FetchInstruction() (uint16, error) {
+	opbytes, err := c.ram.Reads(c.pc, 2)
+	if err != nil {
+		return 0x0, err
+	}
+	c.IncrementPC(2)
+	opcode := binary.BigEndian.Uint16(opbytes)
+	return opcode, nil
+}
+
+func (c *CPU) CallInstruction(handler InstructionHandler, opcode uint16) error {
+	return handler.HandleInstruction(opcode)
+}
+
 func (c *CPU) ExecuteInstruction(instruction uint16) error {
-	var err error
 	for _, op := range c.opcodes {
-		err = c.CallInstruction(op, instruction)
-		if err != nil {
+		err := c.CallInstruction(op, instruction)
+		if ! errors.Is(err, InstructionNOP{instruction}) {
 			return err
 		}
 	}
-	// fmt.Printf("Executing instruction: %x\n", instruction)
+	var err error
+	fmt.Printf("Executing instruction: %x\n", instruction)
 	switch instruction >> 12 {
-	case 0xA:
-		err = c.loadIndex(instruction)
-	case 0x2:
-		err = c.callSubroutine(instruction)
 	case 0x0:
 		switch instruction & 0x00FF {
 		case 0x00EC:
@@ -94,16 +111,6 @@ func (c *CPU) IncrementPC(count uint16) {
 
 func (c *CPU) SetPC(addr uint16) {
 	c.pc = addr
-}
-
-func (c *CPU) loadIndex(instruction uint16) error {
-	data, err := c.ram.Reads(instruction&0x0FFF, 2)
-	if err != nil {
-		return err
-	}
-	c.index = uint16(data[0])<<8 | uint16(data[1])
-	c.IncrementPC(2)
-	return nil
 }
 
 func (c *CPU) yieldCoroutine() error {
